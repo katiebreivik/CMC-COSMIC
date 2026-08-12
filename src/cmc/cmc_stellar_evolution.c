@@ -1132,6 +1132,9 @@ void handle_bse_outcome(long k, long kb, double kick_info[19][2], double tphysf,
       binary[kb].id2, binary[kb].m2 * units.mstar / FB_CONST_MSUN,
 		star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1,
 		star[knew].rad * units.l/ RSUN, binary[kb].rad1 * units.l / RSUN,binary[kb].rad2 * units.l / RSUN);
+    /* secondary (id2) is gone; id1 survives as star[knew].id via
+     * cp_binmemb_to_star above -- do not release it */
+    bse_release_track_slot(binary[kb].id2);
     destroy_obj(k);
     if (kick_info[2][0] != 0.0) {
       //dprintf("birth kick of %f km/s\n", kick_info[2][0]);
@@ -1198,6 +1201,9 @@ void handle_bse_outcome(long k, long kb, double kick_info[19][2], double tphysf,
 		star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1,
 		star[knew].rad * units.l / RSUN, binary[kb].rad1 * units.l / RSUN, binary[kb].rad2 * units.l / RSUN);
 
+    /* primary (id1) is gone; id2 survives as star[knew].id via
+     * cp_binmemb_to_star above -- do not release it */
+    bse_release_track_slot(binary[kb].id1);
     destroy_obj(k);
     for (int sn = 0; sn < 2; sn++) {
         if (kick_info[0][sn] > 0.0) {
@@ -1280,8 +1286,10 @@ void handle_bse_outcome(long k, long kb, double kick_info[19][2], double tphysf,
     DMse -= star_m[get_global_idx(knew)] * madhoc;
 
   } else if (binary[kb].bse_mass[0] == 0.0 && binary[kb].bse_mass[1] == 0.0) {
-    /* both stars gone */
+    /* both stars gone; no successor object, both ids retire */
     //dprintf("binary disrupted via BSE with no stars intact\n");
+    bse_release_track_slot(binary[kb].id1);
+    bse_release_track_slot(binary[kb].id2);
     destroy_obj(k);
   } else {
     dprintf("unhandled binary outcome!\n");

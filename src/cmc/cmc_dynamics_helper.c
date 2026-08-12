@@ -9,6 +9,7 @@
 #include <string.h>
 #include "cmc.h"
 #include "cmc_vars.h"
+#include "bse_wrap.h"
 
 
 /**
@@ -121,6 +122,28 @@ void print_interaction_error(void)
 		fflush(stdout);
 	}
 	parafprintf(logfile, "!");
+}
+
+/**
+* @brief release the METISSE/COSMIC persistent track-pool slot(s) owned by
+* star i (single star, or both components if it's a binary). Must be
+* called BEFORE destroy_obj(i)/destroy_binary(), since those zero out
+* star[i].id / binary[...].id1/id2 as a side effect. Only meaningful when
+* CMC is genuinely retiring this id forever (ejection, total disruption) --
+* NOT for binary formation/breakup, where the id(s) carry on in a new slot.
+* bse_release_track_slot() is a safe no-op when using_cmc isn't set.
+*
+* @param i Index of star being destroyed
+*/
+void release_star_track_slots(long i)
+{
+	if (star[i].binind) {
+		long kb = star[i].binind;
+		bse_release_track_slot(binary[kb].id1);
+		bse_release_track_slot(binary[kb].id2);
+	} else {
+		bse_release_track_slot(star[i].id);
+	}
 }
 
 /**
@@ -1949,7 +1972,17 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 						nmerged++;
 					}
 					set_star_EJ(knew);
-					
+
+					/* star[knew].id above is a freshly-derived merger id,
+					 * distinct from every progenitor id[0..ncoll-1] -- none
+					 * of them survive, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->id[coll_j]);
+						}
+					}
+
 					//star[knew].id = star_get_id_new();
 
 					if(kick_info[6][0]!=0.0){
@@ -2059,6 +2092,16 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 					//binary[star[knew].binind].id1 = star_get_id_new();
 					binary[star[knew].binind].id1 = tempstar.id;
 
+					/* tempstar.id above is a freshly-derived merger id,
+					 * distinct from every progenitor id[0..ncoll-1] --
+					 * none of them survive, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->obj[0]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->obj[0]->id[coll_j]);
+						}
+					}
+
                                         if(kick_info[6][0]!=0.0){
                                                 VK0 = sqrt(sqr(kick_info[6][0])+sqr(kick_info[7][0])+sqr(kick_info[8][0]));
                                                 dprintf("dynhelp_merge2: TT=%.18g kick_info[0][0]=%.18g kick_info[6][0]=%.18g kick_info[7][0]=%.18g kick_info[8][0]=%.18g VK0=%.18g star_id=%ld\n",TotalTime,kick_info[0][0],kick_info[6][0],kick_info[7][0],kick_info[8][0],VK0,binary[star[knew].binind].id1);
@@ -2146,6 +2189,16 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 
 					//binary[star[knew].binind].id2 = star_get_id_new();
 					binary[star[knew].binind].id2 = tempstar.id;
+
+					/* tempstar.id above is a freshly-derived merger id,
+					 * distinct from every progenitor id[0..ncoll-1] --
+					 * none of them survive, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->obj[1]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->obj[1]->id[coll_j]);
+						}
+					}
 
                                         if(kick_info[6][0]!=0.0){
                                                 VK0 = sqrt(sqr(kick_info[6][0])+sqr(kick_info[7][0])+sqr(kick_info[8][0]));
@@ -2278,6 +2331,15 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 					}
 					set_star_EJ(knewp);
 
+					/* none of the progenitor id[0..ncoll-1] survive as the
+					 * merged single-object id, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->obj[sid]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->obj[sid]->id[coll_j]);
+						}
+					}
+
 					//star[knewp].id = star_get_id_new();
 					if(kick_info[6][0]!=0.0){
                                                 VK0 = sqrt(sqr(kick_info[6][0])+sqr(kick_info[7][0])+sqr(kick_info[8][0]));
@@ -2374,12 +2436,22 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 						nmerged++;
 					}
 					set_star_EJ(knew);
-					
+
 					cp_starSEvars_to_binmember(tempstar, star[knew].binind, 0);
 					cp_starmass_to_binmember(tempstar, star[knew].binind, 0);
 
 					binary[star[knew].binind].id1 = tempstar.id;
 					//binary[star[knew].binind].id1 = star_get_id_new();
+
+					/* tempstar.id above is a freshly-derived merger id,
+					 * distinct from every progenitor id[0..ncoll-1] --
+					 * none of them survive, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->obj[bid]->obj[0]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->obj[bid]->obj[0]->id[coll_j]);
+						}
+					}
 					if(kick_info[6][0]!=0.0){
                                                 VK0 = sqrt(sqr(kick_info[6][0])+sqr(kick_info[7][0])+sqr(kick_info[8][0]));
                                                 dprintf("dynhelp_merge5: TT=%.18g kick_info[0][0]=%.18g kick_info[6][0]=%.18g kick_info[7][0]=%.18g kick_info[8][0]=%.18g VK0=%.18g star_id=%ld\n",TotalTime,kick_info[0][0],kick_info[6][0],kick_info[7][0],kick_info[8][0],VK0,binary[star[knew].binind].id1);
@@ -2458,12 +2530,22 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 						nmerged++;
 					}
 					set_star_EJ(knew);
-					
+
 					cp_starSEvars_to_binmember(tempstar, star[knew].binind, 1);
 					cp_starmass_to_binmember(tempstar, star[knew].binind, 1);
 
 					binary[star[knew].binind].id2 = tempstar.id;
 					//binary[star[knew].binind].id2 = star_get_id_new();
+
+					/* tempstar.id above is a freshly-derived merger id,
+					 * distinct from every progenitor id[0..ncoll-1] --
+					 * none of them survive, release them all */
+					{
+						int coll_j;
+						for (coll_j = 0; coll_j < hier.obj[i]->obj[bid]->obj[1]->ncoll; coll_j++) {
+							bse_release_track_slot(hier.obj[i]->obj[bid]->obj[1]->id[coll_j]);
+						}
+					}
 					/* log collision */
 					binint_log_collision(isbinbin?"binary-binary":"binary-single", 
 						binary[star[knew].binind].id2,

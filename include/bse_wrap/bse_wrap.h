@@ -141,6 +141,7 @@ void evolv2_(int *kstar, double *mass, double *tb, double *ecc, double *z,
 	     double *ospin, double *B_0, double *bacc, double *tacc, double *epoch,
 	     double *tms, double *bhspin, double *tphys, double *zpars, double kick_info[19][2],
 	     int *bpp_index_out, int *bcm_index_out);
+void release_track_slot_(long int *id);
 void instar_(void);
 float ran3_(int *idum);
 void star_(int *kw, double *mass, double *mt, double *tm, double *tn, double *tscls,
@@ -323,6 +324,7 @@ void bse_set_gamma(double gamma); /* angular momentum factor for mass lost durin
 void bse_set_merger(double merger); /* pass through a value signifying a merger (>0.d0), evolv2.f will then do the appropriate kick and/or initial spin*/
 void bse_set_id1_pass(long int id1_pass); /* pass through cmc star id into bse to help in debugging, this is used for iso star and star 1 in binary */
 void bse_set_id2_pass(long int id2_pass); /* pass through cmc star id into bse to help in debugging, this is used for star 2 in binary */
+void bse_release_track_slot(long int id); /* tell COSMIC/METISSE this id will never be evolved again, so it can free the persistent per-star track state it's holding for it (using_cmc=1 only; safe no-op otherwise) */
 void bse_set_taus113state(struct rng_t113_state state, int first);
 
 /* getters */

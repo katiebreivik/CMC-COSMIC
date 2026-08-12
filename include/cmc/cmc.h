@@ -1937,6 +1937,7 @@ double r_of_m(double M);
 void cmc_bse_comenv(binary_t *tempbinary, double cmc_l_unit, double RbloodySUN, double *zpars, double kick_info[19][2], int *fb);
 
 /* Fewbody stuff */
+void release_star_track_slots(long i);
 void destroy_obj(long i);
 void destroy_obj_new(long i);
 void destroy_binary(long i);

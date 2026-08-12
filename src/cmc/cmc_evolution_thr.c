@@ -538,6 +538,7 @@ void tidally_strip_stars(void) {
 							star[i].id,i,star[i].se_k,star[i].se_mass,star[i].se_mt,star[i].se_radius,star[i].se_lum,star[i].se_mc,star[i].se_rc,
 							star[i].se_menv,star[i].se_renv,star[i].se_ospin,star[i].se_epoch,star[i].se_tms,star[i].se_tphys, phi, r);
 
+					release_star_track_slots(i);
 					destroy_obj(i);
 				}
 			}
@@ -603,6 +604,7 @@ void tidally_strip_stars(void) {
 
 					/* perhaps this will fix the problem wherein stars are ejected (and counted)
 					   multiple times */
+					release_star_track_slots(i);
 					destroy_obj(i);
 				}
 			}
@@ -710,6 +712,7 @@ void remove_star(long j, double phi_rtidal, double phi_zero) {
 
 	/* perhaps this will fix the problem wherein stars are ejected (and counted)
 	   multiple times */
+	release_star_track_slots(j);
 	destroy_obj(j);
 }
 
@@ -815,6 +818,7 @@ void get_positions_loop(struct get_pos_str *get_pos_dat){
 		   at the time of mass loss in DoStellarEvolution */
 		if (star_m[g_j] < ZERO) {
 			dprintf("id = %d\tindex of stripped star by mass = %ld\tE = %g\tm=%g\tr=%g\tvr=%g\tvt=%g\n",myid, j,star[j].E,star_m[g_j],star_r[g_j],star[j].vr,star[j].vt);
+			release_star_track_slots(j);
 			destroy_obj(j);
 			continue;
 		}
