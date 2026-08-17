@@ -742,6 +742,9 @@ void bse_set_merger(double merger) {cmcpass_.merger = merger; }
 void bse_set_id1_pass(long int id1_pass) { cmcpass_.id1_pass = id1_pass; }
 void bse_set_id2_pass(long int id2_pass) { cmcpass_.id2_pass = id2_pass; }
 void bse_release_track_slot(long int id) { release_track_slot_(&id); }
+void bse_initialize_metisse_front_cmc(void) { initialize_metisse_front_cmc_(); }
+void bse_load_metisse_tracks_cmc(double z, double *zpars, int *ierr) { load_metisse_tracks_cmc_(&z, zpars, ierr); }
+void bse_set_file_mode(int i) { set_file_mode_(&i); }
 
 /**
 * @brief copies the C tausworthe rng state variables to the Fortran states

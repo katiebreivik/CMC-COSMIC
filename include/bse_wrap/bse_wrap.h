@@ -132,6 +132,9 @@ typedef struct{
 
 /* prototypes for fortran BSE functions */
 void zcnsts_(double *z, double *zpars);
+void initialize_metisse_front_cmc_(void);
+void load_metisse_tracks_cmc_(double *z, double *zpars, int *ierr);
+void set_file_mode_(int *i);
 void bse_set_bcm_bpp_cols(void);
 int bse_get_bcm_index(void); /* Last bcm-row index written by evolv2 (Fortran 1-indexed). */
 int bse_get_bpp_index(void); /* Last bpp-row index written by evolv2 (Fortran 1-indexed). */
@@ -325,6 +328,9 @@ void bse_set_merger(double merger); /* pass through a value signifying a merger 
 void bse_set_id1_pass(long int id1_pass); /* pass through cmc star id into bse to help in debugging, this is used for iso star and star 1 in binary */
 void bse_set_id2_pass(long int id2_pass); /* pass through cmc star id into bse to help in debugging, this is used for star 2 in binary */
 void bse_release_track_slot(long int id); /* tell COSMIC/METISSE this id will never be evolved again, so it can free the persistent per-star track state it's holding for it (using_cmc=1 only; safe no-op otherwise) */
+void bse_initialize_metisse_front_cmc(void); /* sets METISSE's front_end module variable to COSMIC (avoids passing a Fortran string across the C/Fortran boundary). MUST be called once before the first bse_zcnsts() when STELLAR_ENGINE==1, or METISSE_zcnsts silently fails ("front_end is not initialized") and the track library (sa/sa_he) never loads -- every later interpolate_mass call then segfaults dereferencing it. */
+void bse_load_metisse_tracks_cmc(double z, double *zpars, int *ierr); /* loads METISSE's MIST track library (sa/sa_he) from PATH_TO_TRACKS/PATH_TO_HE_TRACKS, without Python (front_end==COSMIC's zcnsts path assumes COSMIC's Python layer already pushed the track arrays via c_m_interface, which never happens for CMC). MUST be called once, after bse_set_stellar_engine(1) and before the first bse_zcnsts(), when STELLAR_ENGINE==1. Sets *ierr non-zero on failure (e.g. bad track paths). Under MPI, only rank 0 should call this with the default file mode (0); every other rank MUST call bse_set_file_mode(1) first, or they will race rank 0 (and each other) rewriting the same fixed-name track-list cache files in the cwd -- see bse_set_file_mode. */
+void bse_set_file_mode(int i); /* i>0 puts METISSE's track-file-discovery code in read-only mode: it reads the cached *filenames*.txt file lists in the cwd instead of regenerating them via rm+find. Needed under MPI so only one rank (0) does the real file discovery; every other rank must call this with i=1 before its own bse_load_metisse_tracks_cmc(), after rank 0 has finished (e.g. via MPI_Bcast/MPI_Barrier) -- otherwise multiple ranks race rm+find+write on the same fixed-name cache files and get corrupted reads. */
 void bse_set_taus113state(struct rng_t113_state state, int first);
 
 /* getters */
