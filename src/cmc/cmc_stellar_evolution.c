@@ -92,11 +92,52 @@ void restart_stellar_evolution(void){
     }
     bse_set_metisse_inputs(PATH_TO_TRACKS, PATH_TO_HE_TRACKS,
                            Z_MATCH_LIMIT, (int) METISSE_VERBOSE);
+    /* METISSE's front_end module variable has no COMMON-block backing
+     * (it's set via a Fortran subroutine call, not a struct write like
+     * the flags above) and defaults uninitialized; must be set before
+     * the first bse_zcnsts() or METISSE_zcnsts silently fails to load
+     * the track library and every later interpolate_mass() segfaults. */
+    bse_initialize_metisse_front_cmc();
   }
   bse_set_stellar_engine((int) STELLAR_ENGINE);
 
   /* set parameters relating to metallicity */
   zpars = (double *) malloc(20 * sizeof(double));
+  if (STELLAR_ENGINE == 1) {
+    /* CMC has no Python in its process, so it can't load METISSE's MIST
+     * track library the way COSMIC's own evolve.py does (front_end==COSMIC's
+     * zcnsts path assumes that already happened). Load it natively here,
+     * once, before the first bse_zcnsts() call.
+     *
+     * Under MPI every rank would otherwise race rm+find+write on the same
+     * fixed-name track-list cache files in the cwd (confirmed: produced
+     * corrupted filenames/reads on some ranks). So only rank 0 does the
+     * real file discovery (file mode 0, the default); every other rank
+     * switches METISSE's track-file reader to read-only mode first, so it
+     * only reads the cache files rank 0 already wrote. MPI_Bcast (itself
+     * collective) both guarantees rank 0's writes are complete before any
+     * other rank proceeds, and lets every rank learn about a rank-0
+     * failure and exit together, rather than the rest hanging on a
+     * barrier a dead rank 0 never reaches. */
+    int metisse_track_ierr = 0;
+    if (myid == 0) {
+      bse_load_metisse_tracks_cmc(METALLICITY, zpars, &metisse_track_ierr);
+    } else {
+      bse_set_file_mode(1);
+    }
+    MPI_Bcast(&metisse_track_ierr, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (metisse_track_ierr != 0) {
+      eprintf("ERROR: failed to load METISSE tracks for CMC (check PATH_TO_TRACKS/PATH_TO_HE_TRACKS).\n");
+      exit_cleanly(-1, __FUNCTION__);
+    }
+    if (myid != 0) {
+      bse_load_metisse_tracks_cmc(METALLICITY, zpars, &metisse_track_ierr);
+      if (metisse_track_ierr != 0) {
+        eprintf("ERROR: failed to load METISSE tracks for CMC (rank %d).\n", myid);
+        exit_cleanly(-1, __FUNCTION__);
+      }
+    }
+  }
   bse_zcnsts(&METALLICITY, zpars);
 
   /* set the variables for the BCM/BPP arrays */
@@ -205,11 +246,52 @@ void stellar_evolution_init(void){
     }
     bse_set_metisse_inputs(PATH_TO_TRACKS, PATH_TO_HE_TRACKS,
                            Z_MATCH_LIMIT, (int) METISSE_VERBOSE);
+    /* METISSE's front_end module variable has no COMMON-block backing
+     * (it's set via a Fortran subroutine call, not a struct write like
+     * the flags above) and defaults uninitialized; must be set before
+     * the first bse_zcnsts() or METISSE_zcnsts silently fails to load
+     * the track library and every later interpolate_mass() segfaults. */
+    bse_initialize_metisse_front_cmc();
   }
   bse_set_stellar_engine((int) STELLAR_ENGINE);
 
   /* set parameters relating to metallicity */
   zpars = (double *) malloc(20 * sizeof(double));
+  if (STELLAR_ENGINE == 1) {
+    /* CMC has no Python in its process, so it can't load METISSE's MIST
+     * track library the way COSMIC's own evolve.py does (front_end==COSMIC's
+     * zcnsts path assumes that already happened). Load it natively here,
+     * once, before the first bse_zcnsts() call.
+     *
+     * Under MPI every rank would otherwise race rm+find+write on the same
+     * fixed-name track-list cache files in the cwd (confirmed: produced
+     * corrupted filenames/reads on some ranks). So only rank 0 does the
+     * real file discovery (file mode 0, the default); every other rank
+     * switches METISSE's track-file reader to read-only mode first, so it
+     * only reads the cache files rank 0 already wrote. MPI_Bcast (itself
+     * collective) both guarantees rank 0's writes are complete before any
+     * other rank proceeds, and lets every rank learn about a rank-0
+     * failure and exit together, rather than the rest hanging on a
+     * barrier a dead rank 0 never reaches. */
+    int metisse_track_ierr = 0;
+    if (myid == 0) {
+      bse_load_metisse_tracks_cmc(METALLICITY, zpars, &metisse_track_ierr);
+    } else {
+      bse_set_file_mode(1);
+    }
+    MPI_Bcast(&metisse_track_ierr, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (metisse_track_ierr != 0) {
+      eprintf("ERROR: failed to load METISSE tracks for CMC (check PATH_TO_TRACKS/PATH_TO_HE_TRACKS).\n");
+      exit_cleanly(-1, __FUNCTION__);
+    }
+    if (myid != 0) {
+      bse_load_metisse_tracks_cmc(METALLICITY, zpars, &metisse_track_ierr);
+      if (metisse_track_ierr != 0) {
+        eprintf("ERROR: failed to load METISSE tracks for CMC (rank %d).\n", myid);
+        exit_cleanly(-1, __FUNCTION__);
+      }
+    }
+  }
   bse_zcnsts(&METALLICITY, zpars);
 
   /* set the variables for the BCM/BPP arrays */
