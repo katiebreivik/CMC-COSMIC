@@ -680,11 +680,16 @@ typedef struct{
 #define PARAMDOC_STREAMS "to run the serial version with the given number of random streams - primarily used to mimic the parallel version running with the same no.of processors"
 	int STREAMS;
 /* Meagan - 3bb */
-#define PARAMDOC_THREEBODYBINARIES "toggles three-body binary formation (0=off, 1=on)"
+#define PARAMDOC_THREEBODYBINARIES "toggles three-body binary formation (0=off, 1=on w/ pairing by mass, 2=on w/ pairing at random)"
 /**
-* @brief toggles three-body binary formation (0=off, 1=on)
+* @brief toggles three-body binary formation (0=off, 1=on w/ pairing by mass, 2=on w/ pairing at random)
 */
 	int THREEBODYBINARIES;
+#define PARAMDOC_BINARY_HARDNESS_POWER "power law index for hardness of newly formed three-body binaries (default is -5.5)"
+/**
+ * @brief Power-law index for hardness of three-body binaries (default is -5.5).
+ */
+	double BINARY_HARDNESS_POWER;
 #define PARAMDOC_MIN_BINARY_HARDNESS "minimum hardness for newly formed three-body binaries"
 /**
 * @brief minimum hardness for newly formed three-body binaries
@@ -1984,7 +1989,7 @@ void copy_globals_to_locals(long k);
 void print_interaction_status(char status_text[]);
 void print_interaction_error(void);
 long star_get_id_new(void);
-long star_get_merger_id_new(long id1, long id2);
+long star_get_merger_id_new(void);
 double calc_n_local(long k, long p, long N_LIMIT);
 double calc_Ai_local(long k, long kp, long p, double W, long N_LIMIT);
 void calc_encounter_dyns(long k, long kp, double v[4], double vp[4], double w[4], double *W, double *rcm, double vcm[4], gsl_rng *rng, int setY);
@@ -2018,7 +2023,7 @@ void binint_do(long k, long kp, double rperi, double w[4], double W, double rcm,
 
 double simul_relax(gsl_rng *rng);
 double simul_relax_new(void);
-int destroy_bbh(double m1, double m2,double a,double e,double nlocal,double sigma,struct rng_t113_state* rng_st);
+int destroy_bbh(double m1,double m2,double a,double e,double nlocal,double sigma,struct rng_t113_state* rng_st);
 double simul_relax_new(void);
 void calc_sigma_r(long p, long N_LIMIT, double *sig_r, double *sig_sigma, long* sig_n, int r_0_mave_1);
 void break_wide_binaries(struct rng_t113_state* rng_st);
@@ -2028,11 +2033,16 @@ double sigma_r(double r);
 // Meagan
 /* three-body binary formation */
 void sort_three_masses(long sq, long *k1, long *k2, long *k3);
-double get_eta(double eta_min, long k1, long k2, long k3, double vrel12[4], double vrel3[4]);
+//double get_eta(double eta_min, long k1, long k2, long k3, double vrel12[4], double vrel3[4]);
 void calc_3bb_encounter_dyns(long k1, long k2, long k3, double v1[4], double v2[4], double v3[4], double (*vrel12)[4], double (*vrel3)[4], gsl_rng *rng);
-void make_threebodybinary(double P_3bb, long k1, long k2, long k3, long form_binary, double eta_min, double ave_local_mass, double n_local, double sigma_local, double v1[4], double v2[4], double v3[4], double vrel12[4], double vrel3[4], double delta_E_running, gsl_rng *rng);
+//void make_threebodybinary(double P_3bb, long k1, long k2, long k3, long form_binary, double eta_min, double ave_local_mass, double n_local, double sigma_local, double v1[4], double v2[4], double v3[4], double vrel12[4], double vrel3[4], double delta_E_running, gsl_rng *rng);
 void calc_sigma_local(long k1, long p, long N_LIMIT, double *ave_local_mass, double *sigma_local);
 int remove_old_star(double time, long k);
+
+// Chris O'C -- generalized 3BBF
+void make_threebodybinary(double P_3bb, long k1, long k2, long k3, long form_binary, double eta_min, double eta_power, double ave_local_mass, double n_local, double sigma_local, double v1[4], double v2[4], double v3[4], double vrel12[4], double vrel3[4], double delta_E_running, gsl_rng *rng);
+void shuffle_three_masses(long sq, long *k1, long *k2, long *k3, gsl_rng *rng);
+double get_eta(double eta_min, double eta_power, long k1, long k2, long k3, double vrel12[4], double vrel3[4]);
 
 // Meagan
 /* extra output for bhs */

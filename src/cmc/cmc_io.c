@@ -989,10 +989,15 @@ if(myid==0) {
 				sscanf(values, "%d", &procs);
 				parsed.STREAMS = 1;
 	/* Meagan: new parameters for three-body binaries: THREEBODYBINARIES, MIN_BINARY_HARDNESS, ONLY_FORM_BH_THREEBODYBINARIES */
+	// Chris O'C: added BINARY_HARDNESS_POWER March 2026
 			} else if (strcmp(parameter_name, "THREEBODYBINARIES") == 0) {
 				PRINT_PARSED(PARAMDOC_THREEBODYBINARIES);
 				sscanf(values, "%d", &THREEBODYBINARIES);
 				parsed.THREEBODYBINARIES = 1;
+			} else if (strcmp(parameter_name, "BINARY_HARDNESS_POWER") == 0) {
+				PRINT_PARSED(PARAMDOC_BINARY_HARDNESS_POWER);
+				sscanf(values, "%lf", &BINARY_HARDNESS_POWER);
+				parsed.BINARY_HARDNESS_POWER = 1;
 			} else if (strcmp(parameter_name, "MIN_BINARY_HARDNESS") == 0) {
 				PRINT_PARSED(PARAMDOC_MIN_BINARY_HARDNESS);
 				sscanf(values, "%lf", &MIN_BINARY_HARDNESS);
@@ -1745,7 +1750,9 @@ if(myid==0) {
 	CHECK_PARSED(STREAMS, 1, PARAMDOC_STREAMS);
 	/*Meagan: new parameters for 3-body binary formation*/
 	CHECK_PARSED(THREEBODYBINARIES, 0, PARAMDOC_THREEBODYBINARIES);
-	CHECK_PARSED(MIN_BINARY_HARDNESS, 5.0, PARAMDOC_MIN_BINARY_HARDNESS);
+	CHECK_PARSED(MIN_BINARY_HARDNESS, 1.0, PARAMDOC_MIN_BINARY_HARDNESS);
+	// Chris O'C - new parameter to adjust the hardness distribution for 3BBF
+	CHECK_PARSED(BINARY_HARDNESS_POWER, -5.5, PARAMDOC_BINARY_HARDNESS_POWER);
 	CHECK_PARSED(ONLY_FORM_BH_THREEBODYBINARIES, 1, PARAMDOC_ONLY_FORM_BH_THREEBODYBINARIES);
 	// default - 1: three-body binary formation only allowed for black holes
 	CHECK_PARSED(BH_LOSS_CONE, 0, PARAMDOC_BH_LOSS_CONE);
@@ -2548,7 +2555,7 @@ MPI: In the parallel version, IO is done in the following way. Some files requir
 //MPI: Headers are written out only by the root node.
    // print header
     if(RESTART_TCOUNT <= 0){
-		pararootfprintf(escfile, "#1:tcount #2:t #3:m[MSUN] #4:r #5:vr #6:vt #7:r_peri #8:r_apo #9:Rtidal #10:phi_rtidal #11:phi_zero #12:E #13:J #14:id #15:binflag #16:m0[MSUN] #17:m1[MSUN] #18:id0 #19:id1 #20:a #21:e #22:startype #23:bin_startype0 #24:bin_startype1 #25:rad0 #26:rad1 #27:tb #28:lum0 #29:lum1 #30:massc0 #31:massc1 #32:radc0 #33:radc1 #34:menv0 #35:menv1 #36:renv0 #37:renv1 #38:tms0 #39:tms1 #40:dmdt0 #41:dmdt1 #42:radrol0 #43:radrol1 #44:ospin0 #45:ospin1 #46:B0 #47:B1 #48:formation0 #49:formation1 #50:bacc0 #51:bacc1 #52:tacc0 $53:tacc1 #54:mass0_0 #55:mass0_1 #56:epoch0 #57:epoch1 #58:bhspin #59:bhspin1 #60:bhspin2 #61:ospin #62:B #63:formation\n");
+		pararootfprintf(escfile, "#1:tcount #2:t #3:m[MSUN] #4:r #5:vr #6:vt #7:r_peri #8:r_apo #9:Rtidal #10:phi_rtidal #11:phi_zero #12:E #13:J #14:id #15:binflag #16:m0[MSUN] #17:m1[MSUN] #18:id0 #19:id1 #20:a #21:e #22:startype #23:bin_startype0 #24:bin_startype1 #25:rad0 #26:rad1 #27:tb #28:lum0 #29:lum1 #30:massc0 #31:massc1 #32:radc0 #33:radc1 #34:menv0 #35:menv1 #36:renv0 #37:renv1 #38:tms0 #39:tms1 #40:dmdt0 #41:dmdt1 #42:radrol0 #43:radrol1 #44:ospin0 #45:ospin1 #46:B0 #47:B1 #48:formation0 #49:formation1 #50:bacc0 #51:bacc1 #52:tacc0 #53:tacc1 #54:mass0_0 #55:mass0_1 #56:epoch0 #57:epoch1 #58:bhspin #59:bhspin1 #60:bhspin2 #61:ospin #62:B #63:formation\n"); // there was a $ in there and it was goofing up automatic parsing of outputs -- fixed by Chris O'C, March 2026
 	   // print header
 		pararootfprintf(triplefile, "#1:time #2:min0 #3:min1 #4:mout #5:Rin0 #6:Rin1 #7:Rout #8:ain #9:aout #10:ein #11:eout #12:ktypein0 #13:ktypein1 #14:ktypeout #15:Tlk_quad #16:Tlk_oct#17:eps_oct #18:T_GR #19:eps_GR\n");
 	   // print header
@@ -3754,6 +3761,9 @@ typedef struct{
 	long   s_tcount;
 	double s_TotalTime;                           
 	long   s_newstarid;
+    long   s_idblocksize;
+    long   s_newid_counter;
+    long   s_newidblock_counter;
     double s_cenma_m;
     double s_cenma_m_new;
     double s_cenma_e;
@@ -3813,6 +3823,9 @@ void save_global_vars(restart_struct_t *rest){
 	rest->s_tcount                             =tcount;
 	rest->s_TotalTime                          =TotalTime;
 	rest->s_newstarid                          =newstarid;
+    rest->s_idblocksize                        =idblocksize;
+    rest->s_newid_counter                      =newid_counter;
+    rest->s_newidblock_counter                 =newidblock_counter;
 	rest->s_cenma_m                            =cenma.m;                 
 	rest->s_cenma_m_new                        =cenma.m_new;                
 	rest->s_cenma_e                            =cenma.E;                       
@@ -3872,6 +3885,9 @@ void load_global_vars(restart_struct_t *rest){
 	tcount                             =rest->s_tcount;
 	TotalTime                          =rest->s_TotalTime;
 	newstarid                          =rest->s_newstarid;
+    idblocksize                        =rest->s_idblocksize;
+    newid_counter                      =rest->s_newid_counter;
+    newidblock_counter                 =rest->s_newidblock_counter;
 	cenma.m                            =rest->s_cenma_m;
 	cenma.m_new                        =rest->s_cenma_m_new;
 	cenma.E                            =rest->s_cenma_e;
